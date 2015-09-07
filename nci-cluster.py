@@ -244,7 +244,7 @@ def remove_line(input, pattern):
         outp = open(outputfile, 'w')
         for line in inp:
                 if not pattern in line:
-                        outp.write(replacement)
+                        outp.write(line)
         inp.close()
         outp.close()
         move(outputfile,input)
