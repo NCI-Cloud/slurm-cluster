@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env python
 #Copyright (c) 2015, National Computational Infrastructure, The Australian National University
 #All rights reserved.
 #
@@ -121,11 +121,9 @@ def distroy_nfs_exports():
 
 def restart_headnode_services():
         proc = subprocess.Popen(["service", "nfs", "restart"], stdout=subprocess.PIPE, shell=False)
-        #print 'poll =', proc.poll(), '("None" means process not terminated yet)'
         proc.wait()
         proc = subprocess.Popen(["service", "iptables", "restart"], stdout=subprocess.PIPE,  shell=False)
         proc.wait()
-        #print ("Services restarted")
 
 #better way to create from scratch?
 def set_firewall(ipAddr):
@@ -201,10 +199,6 @@ def launch_instance(nova,instance_name, user_data_init):
 	set_hostsfile(ipAddr, instance_name)
 	restart_headnode_services()
  	return instance.id, instance_name, ipAddr	
-	#for key,value in tmp_ip.iteritems():
-        #       print key,value
-        #       for x in value:
-        #               print x["addr"]	
 
 def cinder_volume_create(c_conn):
 	volume = c_conn.volumes.create(1, name='myvolume', description='NCI Cluster Volume')
@@ -217,11 +211,6 @@ def setup_slurmhead():
 	replace_line(fileName,'NodeName=',buf)
 	buf = "PartitionName=" + str(SLURM_PART) + " Nodes=" + INSTANCE_NAME + "[0-" + str(MAX_CLUSTER_SIZE) + "] Default=YES MaxTime=INFINITE State=UP\n"
 	replace_line(fileName,'PartitionName=',buf)
-	#PartitionName=cloud1 Nodes=node[0-2] Default=YES MaxTime=INFINITE State=UP
-	#for line in fileinput.FileInput(fileName,inplace=1):
-    	#	line = line.replace("ControlMachine=",buf)
-    	#	print line,
-#ControlMachine=
 
 def replace_line(input,pattern,replacement):
 	inp = open(input, 'r')
@@ -285,50 +274,6 @@ def compute_cloud_init():
     strCloudInit = strCloudInit + "fi\n"
     return (strCloudInit)
 
-def compute_cloud_init_file():
-	file = open(COMPUTE_CLOUD_INIT, 'w')
-	ni.ifaddresses('eth0')
-	ip = ni.ifaddresses('eth0')[2][0]['addr']
-	file.write("#!/bin/bash\n")
-	file.write("echo HeadNode=" + os.uname()[1] + " > /tmp/CloudInit" + "\n")
-	file.write("echo HeadNodeIP=" + str(ip) + " >> /tmp/CloudInit" + "\n")
-	file.write("echo Version 20150821  >> /tmp/CloudInit" + "\n")
-	file.write("sed -i '/" + str(ip) + "/d' /etc/hosts\n") 
-	file.write("echo " + str(ip) + "  " + os.uname()[1] + ">> /etc/hosts\n")
-	file.write("sed -i '/--dport 22 -j ACCEPT/a -A INPUT -s " + str(ip) + " -j ACCEPT' /etc/sysconfig/iptables")
-	file.write("\n")
-	file.write("service iptables restart\n")
-	file.write("echo Version 20150821  >> /tmp/CloudInit" + "\n")
-	file.write("mkdir -p /short; mkdir -p /apps; mkdir -p /jobfs/local/ \n")
-	file.write("echo " + str(ip) + ":/data/short /short nfs hard,intr,rw,rsize=2048,wsize=2048,nfsvers=3 0 0 >> /etc/fstab\n")
-	file.write("echo " + str(ip) + ":/data/apps  /apps  nfs hard,intr,ro,rsize=2048,wsize=2048,nfsvers=3 0 0 >> /etc/fstab\n")
-	#disable /hme for now
-	file.write("echo " + str(ip) + ":/data/home  /home nfs  hard,intr,rw,rsize=2048,wsize=2048,nfsvers=3 0 0 >> /etc/fstab\n")
-	file.write("echo " + str(ip) + ":/data/opt   /opt   nfs hard,intr,ro,rsize=2048,wsize=2048,nfsvers=3 0 0 >> /etc/fstab\n")
-	file.write("echo Version 20150821  >> /tmp/CloudInit" + "\n")
-	#Bug that needs to be fixed in next cloud image
-	file.write("echo /apps/Modules/modulefiles  >> /usr/share/Modules/init/.modulespath" + "\n")
-	#file.write("#echo " + str(get_head_public_key()) + ">> /root/.ssh/authorized_keys\n")
-	#file.write("#mkdir -p /var/slurm/log/ ; chown slurm:slurm /var/slurm/log\n")
-	#file.write("echo mount -t nfs " + str(ip) + ":/data/short /short >> /etc/fstab \n")
-	#file.write("echo mount -t nfs " + str(ip) + ":/data/apps /apps >> /etc/fstab \n")
-	#file.write("echo mount -t nfs " + str(ip) + ":/data/opt /opt >> /etc/fstab \n")
-	#file.write("echo mount -t nfs " + str(ip) + ":/data/home /home >> /etc/fstab \n")
-	file.write("mount -a \n")
-	file.write("if [ -s /opt/etc/hosts ]; then\n")
-	file.write("   ln -s /opt/etc/hosts /etc/hosts -f\n")
-	file.write("fi\n")
-	file.write("echo Version 20150821-1  >> /tmp/CloudInit" + "\n")
-	#fmunge = open("/etc/munge/munge.key",'r')
-	#mungekey=fmunge.read()	
-	#print str(mungekey)
-	#print "atif after munge-key\n"
-	#file.write("echo \"" + str(mungekey) + "\" > /etc/munge/munge.key\n")
-	#file.write("echo " + str(mungekey) + " > /etc/munge/munge.key\n")
-	#file.write("echo \"" + str(mungekey) + "\" >> /tmp/CloudInit\n")
-	file.write("service munge restart\n")
-	file.write("service slurm restart\n")
-	file.close()
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -522,12 +467,9 @@ def check_keypair(nova):
 	except:
 		print "Error seeking Keypair..."
 	if key:
-		# TODO: We should actually match the existing key fingerprint and id_rsa.pub. If yes, proceed else exit.
 		keyFile=open("/root/.ssh/id_rsa.pub","r")
 		keyLine=keyFile.readline()
 		keyFingerprint=get_fingerprint(keyLine)
-		#print keyFingerprint
-		#print key[0].fingerprint
 		if key[0].fingerprint == keyFingerprint:
 			print "Key %s found..." %(KEY_NAME)
 		else:
@@ -549,10 +491,6 @@ def check_keypair(nova):
 	else:
 		create_keypair(nova)
 	
-#        if not nova.keypairs.findall(name=KEY_NAME):
-#                with open(os.path.expanduser('/root/.ssh/id_rsa.pub')) as fpubkey:
-#                        nova.keypairs.create(name=KEY_NAME, public_key=fpubkey.read())
-#                        print ("I created a new OpenStack key (%s) based on /root/.ssh/id_rsa.pub\n") %(str(KEY_NAME))
 
 def create_secgroup(nova):
         seclist=nova.security_groups.list()
@@ -616,8 +554,8 @@ def build():
 		print ("Launching %s") %(str(INSTANCE_NAME + str(iCount)))
 		instance_id,instance_name,instance_ip = launch_instance(nova,INSTANCE_NAME+str(iCount),strCloudInit)
 		update_db(instance_id,instance_name,instance_ip)
-		#We copy the hosts file and configure the clustersh everything. This ensure that in case of a failure to
-		#launch a compute node still results in the user getting a working cluster. E.g. you requested 10 nodes
+		#We copy the hosts file and configure clustersh. This ensures that in case of a failure to
+		#launch a compute node,  user still gets a working cluster. E.g. you requested 10 nodes
 		#but only got 8 due to capacity or quota issues.
 		copyfile("/etc/hosts",CLUSTER_OPT+"/etc/hosts")
 		config_clustersh()
