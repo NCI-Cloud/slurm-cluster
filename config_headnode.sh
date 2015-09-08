@@ -399,7 +399,7 @@ case $key in
     -i|--from-image)
     from_image
     ;;
-    -s|--build-image)
+    -b|--build-image)
     echo "BUILD image from scratch"
     build_scratch
     ;;
