@@ -1,4 +1,4 @@
-!/usr/bin/env python
+#!/usr/bin/env python
 #Copyright (c) 2015, National Computational Infrastructure, The Australian National University
 #All rights reserved.
 #
