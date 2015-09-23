@@ -38,6 +38,10 @@ echo "yanked" > /root/.bash_history
 rm -rf /root/.cache/*
 rm -rf /root/.novaclient/*
 cat /dev/null > ~/.bash_history && history -c
+
+echo "-------------------------------------------------------"
+echo "Please manually check /etc/fstab for fixed mount points"
+echo "-------------------------------------------------------"
 echo "Please go to OpenStack dashboard, shutdown the instance and create a snapshop"
 echo "Refer to documentation for more details"
 

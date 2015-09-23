@@ -156,12 +156,16 @@ def launch_instance(nova,instance_name, user_data_init):
 		image = nova.images.find(name=IMAGE_NAME)
 	except:
 		print "Image %s not found... please check image name." %(IMAGE_NAME)
+                e = sys.exc_info()[1]
+                print "Error: %s " % e
 		sys.exit(1)
 	#image = nova.images.find(name=IMAGE_NAME)
 	try:
 		flavor = nova.flavors.find(name=FLAVOUR_NAME)
 	except:
-		print "Flavoud %s not found... please check available flavours." %(FLAVOUR_NAME)
+		print "Flavour %s not found... please check available flavours." %(FLAVOUR_NAME)
+                e = sys.exc_info()[1]
+                print "Error: %s " % e
 		sys.exit(1)
 	# OpenStack documentation makes Microsoft documentation looks like it was written by God!
 	try:	
@@ -237,6 +241,20 @@ def remove_line(input, pattern):
         inp.close()
         outp.close()
         move(outputfile,input)
+
+def replace_string_line(input,pattern):
+        inp = open(input, 'r')
+        outputfile = input + ".conf.swp"
+        outp = open(outputfile, 'w')
+        for line in inp:
+                if pattern in line:
+                        line = line.replace(pattern," ")
+			outp.write(line)
+		else:
+			outp.write(line)
+        inp.close()
+        outp.close()
+        move(outputfile,input) 
 
 def get_host_ip():
 	ni.ifaddresses('eth0')
@@ -327,10 +345,28 @@ def create_cluster_db():
 def update_db(id, name, ip):
 	db = CLUSTER_NAME + ".db"
         conn = sqlite3.connect(db)
-	sSQL = "INSERT INTO NODES (ID, NAME, IP_ADDR_EXT) values ('" + str(id) + "', '" + str(name) + "', '" + str(ip) + "')"
+	sSQL = "INSERT INTO NODES (ID, NAME, IP_ADDR_EXT) values ('%s','%s','%s')" %(str(id),str(name),str(ip))
 	conn.execute(sSQL)
 	conn.commit()
 	conn.close()
+
+def remove_node_db(name):
+        db = CLUSTER_NAME + ".db"
+        conn = sqlite3.connect(db)
+        sSQL = "delete from nodes where name = '%s'" %(name)
+        conn.execute(sSQL)
+        conn.commit()
+        conn.close()
+
+def next_node(name):
+        db = CLUSTER_NAME + ".db"
+        conn = sqlite3.connect(db)
+	cur = conn.cursor()
+	sSQL = "select max(replace(name,'%s','')) from nodes" %(name)
+        cur.execute(sSQL)
+        result = cur.fetchone()
+        conn.close()
+	return result[0]
 
 def check_munge():
 		
@@ -379,7 +415,7 @@ def destroy():
                     print "Error terminating the instance..."
                     e = sys.exc_info()[1]
                     print "Error: %s " % e
-                    sys.exit(0)
+                    #sys.exit(0)
 	    try:
 		    print str(row[2])
         	    remove_line("/etc/sysconfig/iptables",str(row[2]))	
@@ -387,15 +423,16 @@ def destroy():
 		    print "Error removing the iptables entry for %s... please remove manually" %(str(row[2]))
 		    e = sys.exc_info()[1]
                     print "Error: %s " % e
-
+        
         empty_file("/etc/exports")
-	print "NFS Exports file entries have been removed..."
+        print "NFS Exports file entries have been removed..."
         proc = subprocess.Popen(["service", "nfs", "stop"], stdout=subprocess.PIPE, shell=False)
         #print 'poll =', proc.poll(), '("None" means process not terminated yet)'
         proc.wait()
         proc = subprocess.Popen(["service", "iptables", "restart"], stdout=subprocess.PIPE,  shell=False)
         proc.wait()	
         conn.close()
+        os.remove(db)	
     else:
         print "Exiting on user request"
         sys.exit(0)
@@ -443,18 +480,26 @@ def parse_conf(confFile):
 
 def config_clustersh():
 	csh_group="/etc/clustershell/groups"
+	nextNode=int(next_node(INSTANCE_NAME))
 	if os.path.exists(csh_group):
 		empty_file(csh_group)
 		f = open(csh_group,"w")
-		f.write("compute: " + str(INSTANCE_NAME) + "[" + str(CLUSTER_RANGE_START) + "-" + str(CLUSTER_COMPUTE_SIZE) + "]\n")
-		f.write("all: " + str(INSTANCE_NAME) + "[" + str(CLUSTER_RANGE_START) + "-" + str(CLUSTER_COMPUTE_SIZE) + "]\n")
+		f.write("compute: " + str(INSTANCE_NAME) + "[" + str(CLUSTER_RANGE_START) + "-" + str(nextNode) + "]\n")
+		f.write("all: " + str(INSTANCE_NAME) + "[" + str(CLUSTER_RANGE_START) + "-" + str(nextNode) + "]\n")
 		f.close()
 
 
 def create_keypair(nova):
-	with open(os.path.expanduser('/root/.ssh/id_rsa.pub')) as fpubkey:
-		nova.keypairs.create(name=KEY_NAME, public_key=fpubkey.read())
-		print ("New OpenStack key (%s) based on /root/.ssh/id_rsa.pub was created...\n") %(str(KEY_NAME))
+        with open(os.path.expanduser('/root/.ssh/id_rsa.pub')) as fpubkey:
+                try:
+                        nova.keypairs.create(name=KEY_NAME, public_key=fpubkey.read())
+                except:
+                        print "Error creating keypair"
+                        e = sys.exc_info()[1]
+                        print "Error: %s " % e
+                        sys.exit(0)
+
+                print ("New OpenStack key (%s) based on /root/.ssh/id_rsa.pub was created...\n") %(str(KEY_NAME))
 
 def get_fingerprint(line):
 	key = base64.b64decode(line.strip().split()[1].encode('ascii'))
@@ -533,7 +578,112 @@ def headnode_secgroup(nova):
 			e = sys.exc_info()[0]
 			print e
 			sys.exit(1)
-					
+
+def verify_cluster(nova):
+    print ("Verifying the cluster, please wait...")
+    db = CLUSTER_NAME + ".db"
+    conn = sqlite3.connect(db)
+    sSQL = "SELECT ID, NAME, IP_ADDR_EXT FROM NODES"
+    result = conn.execute(sSQL)
+    server_list=nova.servers.list()
+    #print server_list
+    for row in result:
+        print "Looking for instance (%s)- %s with IP %s " %(str(row[0]), str(row[1]), str(row[2]))
+        try:
+            ret = nova.servers.findall(name=str(row[1]))
+        except:
+            print "Error finding the instance %s" %(str(row[1]))
+            e = sys.exc_info()[1]
+            print "Error: %s " % e
+            sys.exit(0)
+	#print ret
+	foundServer=0
+        for server in ret:
+	    #print server.name
+	    #print server.id
+	    if server.id == str(row[0]):
+                foundServer=1
+		if server.status != 'ACTIVE':
+			print "Instance is not active"
+        if foundServer==0:
+		print ("Instance (%s) - %s with IP %s  not found... verification for the cluster failed") %(str(row[0]),str(row[1]),str(row[2]))
+		sys.exit(0)
+
+def add_node(nova,INSTANCE_NAME,strCloudInit):
+    print ("Launching %s") %(str(INSTANCE_NAME))
+    instance_id,instance_name,instance_ip = launch_instance(nova,INSTANCE_NAME,strCloudInit)
+    update_db(instance_id,instance_name,instance_ip)
+    copyfile("/etc/hosts",CLUSTER_OPT+"/etc/hosts")
+    config_clustersh()
+
+def extend(addNodeCount):
+    print ("Reading Config File (%s)...") %(CLUSTER_CFG)
+    parse_conf(CLUSTER_CFG)
+    print ("Extending the cluster by adding %s nodes") %(addNodeCount)
+    strKey="Are you sure?"
+    ret = query_yes_no(strKey, "no")
+    if ret == False:
+	sys.exit(0)
+	
+    creds = get_nova_creds()
+    nova = nvclient.Client(**creds)
+    verify_cluster(nova)
+    nextNode=int(next_node(INSTANCE_NAME))
+    #print nextNode
+    strCloudInit=compute_cloud_init()
+    for iCount in xrange(addNodeCount):
+	nextNode = int(nextNode) + 1
+	print "Node %s being added to the cluster..." %(INSTANCE_NAME+str(nextNode))
+        add_node(nova,INSTANCE_NAME+str(nextNode),strCloudInit)
+    print ("Compute nodes added to the cluster.. \nPlease run './readyCluster.py -s' to restart services on the entire cluster or individually start services using './readyCluster.py -n NODE' and restart slurm on the headnode.")		
+	
+def shrink(nodeCount):
+    print ("Reading Config File (%s)...") %(CLUSTER_CFG)
+    parse_conf(CLUSTER_CFG)
+    print ("This operation will delete %s nodes") %(nodeCount)
+    strKey="Are you sure?"
+    ret = query_yes_no(strKey, "no")
+    if ret == False:
+        sys.exit(0)
+
+    creds = get_nova_creds()
+    nova = nvclient.Client(**creds)
+    verify_cluster(nova)
+    nextNode=int(next_node(INSTANCE_NAME))
+    db = CLUSTER_NAME + ".db"
+    conn = sqlite3.connect(db)
+    for iCount in xrange(nodeCount):
+	sSQL="Select * from nodes where name = '%s'" %(INSTANCE_NAME+str(nextNode))
+	ret=conn.execute(sSQL)
+	#print ret
+	#print nextNode
+	for server in ret:
+	    print "Terminating instance %s (id: %s) " %(server[1],server[0])
+	    try:
+                    ret = nova.servers.delete(str(server[0]))
+            except:
+                    print "Error terminating the instance..."
+                    e = sys.exc_info()[1]
+                    print "Error: %s " % e
+                    sys.exit(0)
+            try:
+                    print str(server[2])
+                    remove_line("/etc/sysconfig/iptables",str(server[2]))
+		    fileSystems=['/apps','/home', '/opt','/system','/short']
+		    toRemove=server[2] + "(rw,sync)"
+		    for fs in fileSystems:
+                  	  replace_string_line("/etc/exports",toRemove)
+		    remove_line("/etc/hosts",str(server[2]))
+            except:
+                    print "Error removing the iptables or nfs exports entry for %s... please remove manually" %(str(server[2]))
+                    e = sys.exc_info()[1]
+                    print "Error: %s " % e
+	    remove_node_db(INSTANCE_NAME+str(nextNode))
+	    nextNode = nextNode - 1
+    conn.close()	   	
+    proc = subprocess.Popen(["service", "nfs", "restart"], stdout=subprocess.PIPE, shell=False)
+    proc.wait()
+
 def build():	
 	print ("Reading Config File (%s)...") %(CLUSTER_CFG)
 	parse_conf(CLUSTER_CFG)
@@ -553,7 +703,7 @@ def build():
 	for iCount in range(CLUSTER_RANGE_START,CLUSTER_COMPUTE_SIZE+1):
 		print ("Launching %s") %(str(INSTANCE_NAME + str(iCount)))
 		instance_id,instance_name,instance_ip = launch_instance(nova,INSTANCE_NAME+str(iCount),strCloudInit)
-		update_db(instance_id,instance_name,instance_ip)
+		update_db(instance_id, instance_name,instance_ip)
 		#We copy the hosts file and configure clustersh. This ensures that in case of a failure to
 		#launch a compute node,  user still gets a working cluster. E.g. you requested 10 nodes
 		#but only got 8 due to capacity or quota issues.
@@ -567,7 +717,7 @@ def build():
 	#cinder_volume_create(c_conn)
         #print(c_conn.volumes.list())
 	config_clustersh()
-	print ("Cluster launched.... please wait for sometime and then run readyCluster to start the daemons\n")
+	print ("Cluster launched.... please wait for sometime and then run readyCluster -s to start the daemons\n")
 	sys.exit(0) 
 
 def main():
@@ -575,19 +725,31 @@ def main():
 	parser.add_option('-c', '--config', dest='config', default='cluster.cfg' , help='Use different configuration file (default: cluster.cfg)')
 	parser.add_option('-b', '--build', action="store_true", default=False , help='Builds a new cluster from cluster.cfg file')
 	parser.add_option('-d', '--destroy', action="store_true", default=False , help='Destroys the cluster from cluster.cfg file')
+	parser.add_option('-e', '--extend', action="store", default=0, type="int" , help='Adds a node to the cluster')
+	parser.add_option('-s', '--shrink', action="store", default=0, type="int" , help='Terminate nodes')
 	(opts, args) = parser.parse_args()
 	global CLUSTER_CFG
 	#print opts
 	#print args
-	if opts.build and opts.destroy:
-		print "Options -b and -d are mutually exclusive"
+        if not opts.build and not opts.destroy and not opts.extend and not opts.shrink:
+            parser.print_help()
+            sys.exit(0)
+	if (opts.build and opts.destroy) or  (opts.extend and opts.destroy) or (opts.extend and opts.build):
+		print "Options -b, -d, -e are mutually exclusive"
 		sys.exit(0)
 	if opts.config is not None:
 		CLUSTER_CFG=str(opts.config)
 	if opts.build == True:
-	    	build()
+        	build()
 	elif opts.destroy == True:
 		destroy()
-
+        elif opts.extend > 0:
+		#print opts.extend
+                extend(opts.extend)
+	elif opts.shrink > 0:
+		shrink(opts.shrink)
+	else:
+		parser.print_help()
+            	sys.exit(0)
 if __name__ == '__main__':
     main()
