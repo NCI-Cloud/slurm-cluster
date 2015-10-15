@@ -169,7 +169,10 @@ def launch_instance(nova,instance_name, user_data_init):
 		sys.exit(1)
 	# OpenStack documentation makes Microsoft documentation looks like it was written by God!
 	try:	
-        	instance = nova.servers.create(name=instance_name, image=image, flavor=flavor, availability_zone=AVAILABILITY_ZONE, userdata=user_data_init, key_name=KEY_NAME, security_groups=SECURITY_GROUP)
+                if (NETWORK_NAME == 'NeCTAR'):
+                        instance = nova.servers.create(name=instance_name, image=image, flavor=flavor, availability_zone=AVAILABILITY_ZONE, userdata=user_data_init, key_name=KEY_NAME, security_groups=SECURITY_GROUP)
+                else:
+                        instance = nova.servers.create(name=instance_name, image=image, flavor=flavor, availability_zone=AVAILABILITY_ZONE, userdata=user_data_init, key_name=KEY_NAME, nics=[{'net-id': NETWORK_NAME}])	
 	except:
 		print "Error launching the instance..."
 		e = sys.exc_info()[1]
