@@ -37,8 +37,8 @@ echo NETWORKING=yes > /etc/sysconfig/network
 echo "yanked" > /root/.bash_history
 rm -rf /root/.cache/*
 rm -rf /root/.novaclient/*
-cat /dev/null > ~/.bash_history && history -c
-
+cat /dev/null > ~/.bash_history 
+history -c
 echo "-------------------------------------------------------"
 echo "Please manually check /etc/fstab for fixed mount points"
 echo "-------------------------------------------------------"
