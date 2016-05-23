@@ -331,7 +331,7 @@ function copy_apps {
 	/usr/bin/rsync -av /contrib/slurm-home/ /home/
         #Setup OpenMPI Module in /apps/Modules/modulefiles
         mkdir -p /apps/Modules/modulefiles/openmpi/
-        cat > /apps/Modules/modulefiles/openmpi/1.10.0 << EOF
+        cat > /apps/Modules/modulefiles/openmpi/1.10.2 << EOF
 #%Module1.0#####################################################################
 ##
 ## standalone modulefile
@@ -346,7 +346,7 @@ proc ModulesHelp { } {
 module-whatis    "OpenMPI. You have to know what it is! :)"
  
 # for Tcl script use only
-set     ompiver 1.10.0
+set     ompiver 1.10.2
 
 set             OMPI                    /apps/openmpi/\$ompiver
 setenv          OMPI                    \$OMPI
