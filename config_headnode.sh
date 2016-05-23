@@ -368,7 +368,7 @@ function build_scratch {
 	bind_mount
 	download_slurm
 	install_slurm
-	install_openmpi_1.10.0
+	install_openmpi_1.10.2
 	#job_creds
 	generate_keys
 	iptables_own
