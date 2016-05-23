@@ -26,8 +26,8 @@
 #of the authors and should not be interpreted as representing official policies,
 #either expressed or implied, of the FreeBSD Project.
 
-SLURM_WGET="http://www.schedmd.com/download/latest/slurm-15.08.0.tar.bz2"
-OPENMPI_WGET="http://www.open-mpi.org/software/ompi/v1.10/downloads/openmpi-1.10.0.tar.gz"
+SLURM_WGET="http://www.schedmd.com/download/latest/slurm-15.08.11.tar.bz2"
+OPENMPI_WGET="https://www.open-mpi.org/software/ompi/v1.10/downloads/openmpi-1.10.2.tar.gz"
 NFS_PART="nothing"
 
 function install_packages {
@@ -112,7 +112,7 @@ function install_slurm {
 	sed -i '/### END INIT /a prefix="/opt/slurm"' /etc/init.d/slurm 
 	mkdir -p /opt/slurm/etc
 	mkdir -p /var/slurm/log/
-	cp slurm.conf.template /opt/slurm/etc/slurm.conf
+	cp ../slurm.conf.template /opt/slurm/etc/slurm.conf
 	chmod +x /etc/init.d/slurm
 	cat > /etc/profile.d/slurm.sh <<EOF
 PATH=\$PATH:/opt/slurm/bin:/opt/slurm/sbin
@@ -211,9 +211,9 @@ function bind_mount {
 	
 }
 
-function install_openmpi_1.10.0 {
-        if [ -d /apps/openmpi/1.10.0 ]; then
-                echo OpenMPI-1.10.0 found... Using existing at /apps/openmpi/1.10.0
+function install_openmpi_1.10.2 {
+        if [ -d /apps/openmpi/1.10.2 ]; then
+                echo OpenMPI-1.10.2 found... Using existing at /apps/openmpi/1.10.2
                 return 1
         fi
 	Ret=$(wget $OPENMPI_WGET)
@@ -223,16 +223,16 @@ function install_openmpi_1.10.0 {
         tar -xvf $fname
         echo $dirname
         cd $dirname
-        ./configure --prefix=/apps/openmpi/1.10.0 --enable-shared --enable-builtin-atomics --enable-mpi-thread-multiple --enable-mca-no-build=portals4,portals,elan,usnic --enable-orterun-prefix-by-default
+        ./configure --prefix=/apps/openmpi/1.10.2 --enable-shared --enable-builtin-atomics --enable-mpi-thread-multiple --enable-mca-no-build=portals4,portals,elan,usnic --with-verbs --enable-orterun-prefix-by-default
         make && make install
         if [ $? -ne 0 ]; then
-                echo OpenMPI-1.10.0 compilation filed.. Exiting
+                echo OpenMPI-1.10.2 compilation filed.. Exiting
                 exit 1
         fi
 	
 	#Setup OpenMPI Module in /apps/Modules/modulefiles
 	mkdir -p /apps/Modules/modulefiles/openmpi/
-	cat > /apps/Modules/modulefiles/openmpi/1.10.0 << EOF
+	cat > /apps/Modules/modulefiles/openmpi/1.10.2 << EOF
 #%Module1.0#####################################################################
 ##
 ## standalone modulefile
@@ -247,7 +247,7 @@ proc ModulesHelp { } {
 module-whatis    "OpenMPI. You have to know what it is! :)"
 
 # for Tcl script use only
-set     ompiver 1.10.0
+set     ompiver 1.10.2
 
 set             OMPI   			/apps/openmpi/\$ompiver
 setenv          OMPI   			\$OMPI
