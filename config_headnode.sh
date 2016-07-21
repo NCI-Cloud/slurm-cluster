@@ -337,6 +337,7 @@ PBS_CORE_LIMIT=unlimited
 PBS_SCP=/usr/bin/scp
 EOF
 
+echo "\$clienthost" `hostname` > /var/spool/pbs/mom_priv/config
 }
 
 function copy_apps {
