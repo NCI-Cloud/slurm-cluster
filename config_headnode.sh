@@ -324,6 +324,21 @@ function perform_update {
 	yum update -y
 }
 
+function pbs_server_conf {
+cat > /etc/pbs.conf << EOF
+PBS_SERVER=`hostname`
+PBS_START_SERVER=1
+PBS_START_SCHED=1
+PBS_START_COMM=1
+PBS_START_MOM=0
+PBS_EXEC=/opt/pbs
+PBS_HOME=/var/spool/pbs
+PBS_CORE_LIMIT=unlimited
+PBS_SCP=/usr/bin/scp
+EOF
+
+}
+
 function copy_apps {
 	/usr/bin/rsync -av /contrib/slurm /opt/
         /usr/bin/rsync -av /contrib/pbs /opt/
@@ -359,6 +374,9 @@ prepend-path    MANPATH                 \$OMPI/share/man
 EOF
 
 }
+
+# This function does not build PBSPro.. we will fix it later. 
+# Simply following instructions at PBSPro github repo for build instructions
 function build_scratch {
 	house_keeping
 	install_packages
@@ -383,6 +401,7 @@ function from_image {
 	create_fs_base
 	bind_mount
 	copy_apps
+	pbs_server_conf
 	#job_creds
 	generate_keys
 	iptables_own
