@@ -326,6 +326,7 @@ function perform_update {
 
 function copy_apps {
 	/usr/bin/rsync -av /contrib/slurm /opt/
+        /usr/bin/rsync -av /contrib/pbs /opt/
 	/usr/bin/rsync -av /contrib/openmpi /apps/
 	/usr/bin/rsync -av /contrib/Modules /apps/
 	/usr/bin/rsync -av /contrib/slurm-home/ /home/
