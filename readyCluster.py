@@ -66,6 +66,8 @@ def services(nodeName):
         proc.wait()
         proc = subprocess.Popen(["/usr/bin/rsync", "-av", "/etc/hosts", str(nodeName) + ":/etc/"], stdout=subprocess.PIPE,  shell=False)
         proc.wait()
+        proc = subprocess.Popen(["/usr/bin/rsync", "-av", "/opt/pbs", str(nodeName) + ":/system"], stdout=subprocess.PIPE,  shell=False)
+        proc.wait()
         proc = subprocess.Popen(["ssh", nodeName ,"service" ,"iptables" ,"restart"], stdout=subprocess.PIPE, shell=False)
         proc.wait()
         proc = subprocess.Popen(["ssh", nodeName ,"service" ,"munge" ,"start"], stdout=subprocess.PIPE, shell=False)
