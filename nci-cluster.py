@@ -304,6 +304,7 @@ def compute_cloud_init():
     strCloudInit = strCloudInit + "echo PBS_AUTH_METHOD=MUNGE >> /etc/pbs.conf\n"
     strCloudInit = strCloudInit + "echo PBS_SCP=/usr/bin/scp >> /etc/pbs.conf\n"
     strCloudInit = strCloudInit + "echo PBS_CORE_LIMIT=unlimited >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo $clienthost " + os.uname()[1] + " > /var/spool/pbs/mom_priv/config\n"
     
     return (strCloudInit)
 
