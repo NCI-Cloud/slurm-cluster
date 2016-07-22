@@ -293,6 +293,18 @@ def compute_cloud_init():
     strCloudInit = strCloudInit + "if [ -s /opt/etc/hosts ]; then\n"
     strCloudInit = strCloudInit + "   ln -s /opt/etc/hosts /etc/hosts -f\n"
     strCloudInit = strCloudInit + "fi\n"
+    
+    strCloudInit = strCloudInit + "echo PBS_SERVER=" + os.uname()[1] + " > /etc/pbs.conf" + "\n"
+    strCloudInit = strCloudInit + "echo PBS_EXEC=/system/pbs >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_HOME=/var/spool/pbs >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_START_SERVER=0 >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_START_SCHED=0 >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_START_COMM=0 >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_START_MOM=1 >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_AUTH_METHOD=MUNGE >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_SCP=/usr/bin/scp >> /etc/pbs.conf\n"
+    strCloudInit = strCloudInit + "echo PBS_CORE_LIMIT=unlimited >> /etc/pbs.conf\n"
+    
     return (strCloudInit)
 
 
